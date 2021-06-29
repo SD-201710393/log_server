@@ -1,0 +1,55 @@
+<html>
+	<head>
+		<link rel="stylesheet" href="table_style.css">
+	</head>
+	<body>
+		<div id="log_info_table">
+			<table style="border-collapse: collapse; width: 100%;" border="0">
+				<tbody>
+					<tr>
+						<td style="width: 25%; text-align: right;">Total Entries:</td>
+						<td style="width: 25%;">{{ data["count"] }}</td>
+						<td style="width: 25%; text-align: right;">Updated:</td>
+						<td style="width: 25%;">{{ data["last_update"] }}</td>
+					</tr>
+				</tbody>
+			</table>
+			<table style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">
+				<tbody>
+					{% for entry in data["entries"] %}
+						<tr>
+							<th style="width: 100%; text-align: center;" colspan="2" scope="colgroup">Entry ID {{ entry["id"] }}</th>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">To</th>
+							<td style="width: 100%; text-align: left;">{{ entry["entry"]["to"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">From</th>
+							<td style="width: 100%; text-align: left;">{{ entry["entry"]["from"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">Comment</th>
+							<td style="width: 100%; text-align: left;">{{ entry["entry"]["comment"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">Timestamp</th>
+							<td style="width: 100%; text-align: left;">{{ entry["entry"]["timestamp"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: center;" scope="row">JSON</th>
+							<td style="width: 100%; text-align: left;">
+								<pre id="json" style="white-space: pre-line; new-line: keep-all;">
+									<code>{{ entry["entry"]["body"] }}</code>
+								</pre>
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</body>
+	<footer>
+
+	</footer>
+</html>
