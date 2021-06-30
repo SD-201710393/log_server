@@ -2,15 +2,19 @@ body {
 	margin: 0;
 	font-size: 18px;
 	font-family: 'Trebuchet MS', sans-serif;
+	background-color: rgb(51,51,51);
+	background-color: linear-gradient(180deg, rgba(51,51,51,1) 0%, rgba(0,0,0,1) 100%);
+}
+
+#log_info_table {
+	background: rgb(51,51,51);
 }
 
 #navbar {
-	overflow: hidden;
 	background-color: #333;
 }
 
 #navbar a, p {
-	color: #f2f2f2;
 	text-align: center;
 	padding: 14px 16px;
 	text-decoration: none;
@@ -22,10 +26,12 @@ body {
 }
 
 #navbar a.update_time, p.update_time {
+	color: #f2f2f2;
 	float: right;
 }
 
 #navbar a.common_nav, p.common_nav, .dropbtn {
+	color: #f2f2f2;
 	float: left;
 }
 
@@ -39,6 +45,12 @@ body {
 	background-color: #03b6fc;	/*accent color */
 	color: white;
 }
+
+#navbar p.disabled_nav {
+	float: left;
+	color: black;
+}
+
 
 .nav_dropdown {
 	float: left;
@@ -59,7 +71,7 @@ body {
 	display: none;
 	position: absolute;
 	background-color: #f1f1f1;
-	min-width: 160px;
+	min-width: 200px;
 	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
 	z-index: 1;
 }
@@ -81,18 +93,15 @@ body {
 	display: block;
 }
 
-.content {
-	padding: 16px;
-}
-
 .sticky {
 	position: fixed;
 	top: 0;
 	width: 100%;
 }
 
-.sticky + .content {
-	padding-top: 60px;
+td {
+	color: #f2f2f2;
+	background-color: #555;
 }
 
 th {

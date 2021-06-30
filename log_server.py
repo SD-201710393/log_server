@@ -9,6 +9,8 @@ app = Flask(__name__)
 
 global_id = 0
 update_cycle = 5    # How many seconds between each update
+per_page = 20       # How many entries per page
+cur_page = 1        # Current page
 entry_list = []
 
 
@@ -96,26 +98,58 @@ def add_entry():
 
 @app.route('/log', methods=['GET'])
 def show_recent_entries():
-    out = {
-        "count": len(entry_list),
-        "last_update": datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y"),
-        "entries": []
-    }
-    for entry in reversed(entry_list):
+    out = prepare_page()
+    rev = entry_list[::-1]
+    for entry in rev[(cur_page-1) * per_page:]:
         out["entries"].append(entry.json())
+        if len(out["entries"]) == per_page:
+            break
     return serve_page(out, 200)
 
 
 @app.route('/log/old', methods=['GET'])
 def show_entries():
+    out = prepare_page()
+    for entry in entry_list[(cur_page-1) * per_page:]:
+        out["entries"].append(entry.json())
+        if len(out["entries"]) == per_page:
+            break
+    return serve_page(out, 200)
+
+
+def prepare_page():
+    global per_page
+    global cur_page
+    entries = len(entry_list)
+    div = entries % per_page
+    if div == 0:
+        max_page = int(entries / per_page)
+    else:
+        max_page = int(entries / per_page) + 1
+    try:
+        if request.args.get("p") is not None and max_page >= int(request.args.get("p")) > 0:
+            cur_page = int(request.args.get("p"))
+    except ValueError:  # Field 'p=' wasn't an integer
+        cur_page = 1
+    try:
+        if request.args.get("epp") is not None and 0 < int(request.args.get("epp")) <= len(entry_list):
+            per_page = int(request.args.get("epp"))
+    except ValueError:  # Field 'epp=" was too big
+        per_page = 20
+    div = entries % per_page
+    if div == 0:
+        max_page = int(entries / per_page)
+    else:
+        max_page = int(entries / per_page) + 1
     out = {
-        "count": len(entry_list),
+        "page": cur_page,
+        "page_max": max_page,
+        "epp": per_page,
+        "count": entries,
         "last_update": datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y"),
         "entries": []
     }
-    for entry in entry_list:
-        out["entries"].append(entry.json())
-    return serve_page(out, 200)
+    return out
 
 
 def serve_page(json_data, return_code):
@@ -133,5 +167,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # d_fill_server()
+    d_fill_server()
     main()

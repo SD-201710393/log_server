@@ -8,20 +8,28 @@
 	<body>
 		<div id="navbar">
 			<p class="active">Total Entries: {{ data["count"] }}</p>
-			<a class="common_nav" href="#/4"><</a>
-			<p class="common_nav">Page 6</p>
-			<a class="common_nav" href="#/7">></a></a>
+			{% if data["page"] > 1%}
+				<a class="common_nav" href="?p={{data["page"]-1}}&epp={{data["epp"]}}"><</a>
+			{% else %}
+				<p class="disabled_nav"><</p>
+			{% endif %}
+			<p class="common_nav">Page {{ data["page"] }} / {{ data["page_max"] }}</p>
+			{% if data["page"] < data["page_max"] %}
+				<a class="common_nav" href="?p={{data["page"]+1}}&epp={{data["epp"]}}">></a>
+			{% else %}
+				<p class="disabled_nav">></p>
+			{% endif %}
 			<div class="nav_dropdown">
-				<button class="dropbtn">Entries per Page
+				<button class="dropbtn">{{ data["epp"] }} Entries per Page
 				</button>
 				<div class="drop-content">
-					<a href="#">10 Entries</a>
-					<a href="#">20 Entries</a>
-					<a href="#">50 Entries</a>
+					<a href="?p=1&epp=10">10 Entries</a>
+					<a href="?p=1&epp=20">20 Entries</a>
+					<a href="?p=1&epp=50">50 Entries</a>
 				</div>
 			</div>
 			<p class="update_time">Updated: {{ data["last_update"] }}</p>
-			<a class="update_time" href="#">Refresh</a>
+			<a class="update_time" href="?">Refresh</a>
 		</div>
 		<div id="log_info_table">
 			<table class="table_data" style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">
@@ -62,17 +70,20 @@
 			window.onscroll = function() {scrollFunction()};
 
 			var navbar = document.getElementById("navbar");
+			var dropcont = document.getElementById("drop-content");
 			var sticky = navbar.offsetTop;
 
 			function scrollFunction() 
 			{
 			  if (window.pageYOffset > sticky) 
 			  {
-				navbar.classList.add("sticky")
+				navbar.classList.add("sticky");
+				dropcont.classList.add("sticky");
 			  } 
 			  else 
 			  {
 				navbar.classList.remove("sticky");
+				dropcont.classList.add("sticky");
 			  }
 			}
 		</script>
