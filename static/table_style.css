@@ -109,6 +109,11 @@ th {
 	background-color: #03b6fc;
 }
 
+.sev_success {
+	color: #000;
+	background-color: #0e5;
+}
+
 .sev_warning {
 	color: #000;
 	background-color: #ff0;

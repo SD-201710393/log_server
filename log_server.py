@@ -170,6 +170,8 @@ def severity_flavor_keys(severity: str):
         return "sev_error"
     if sev == "critical":
         return "sev_critical"
+    if sev == "success":
+        return "sev_success"
     else:
         return "sev_default"
 
