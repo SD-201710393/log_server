@@ -1,46 +1,56 @@
+<!doctype html>
 <html>
 	<head>
-		<link rel="stylesheet" href="table_style.css">
+		<link rel="stylesheet" href="../static/table_style.css">
 	</head>
+	<header>
+	</header>
 	<body>
+		<div id="navbar">
+			<p class="active">Total Entries: {{ data["count"] }}</p>
+			<a class="common_nav" href="#/4"><</a>
+			<p class="common_nav">Page 6</p>
+			<a class="common_nav" href="#/7">></a></a>
+			<div class="nav_dropdown">
+				<button class="dropbtn">Entries per Page
+				</button>
+				<div class="drop-content">
+					<a href="#">10 Entries</a>
+					<a href="#">20 Entries</a>
+					<a href="#">50 Entries</a>
+				</div>
+			</div>
+			<p class="update_time">Updated: {{ data["last_update"] }}</p>
+			<a class="update_time" href="#">Refresh</a>
+		</div>
 		<div id="log_info_table">
-			<table style="border-collapse: collapse; width: 100%;" border="0">
-				<tbody>
-					<tr>
-						<td style="width: 25%; text-align: right;">Total Entries:</td>
-						<td style="width: 25%;">{{ data["count"] }}</td>
-						<td style="width: 25%; text-align: right;">Updated:</td>
-						<td style="width: 25%;">{{ data["last_update"] }}</td>
-					</tr>
-				</tbody>
-			</table>
-			<table style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">
+			<table class="table_data" style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">
 				<tbody>
 					{% for entry in data["entries"] %}
 						<tr>
-							<th style="width: 100%; text-align: center;" colspan="2" scope="colgroup">Entry ID {{ entry["id"] }}</th>
-						</tr>
-						<tr>
-							<th style="width: 10%; text-align: right;" scope="row">To</th>
-							<td style="width: 100%; text-align: left;">{{ entry["entry"]["to"] }}</td>
+							<th class="entry_id" style="width: 100%; text-align: center;" colspan="2" scope="colgroup">Entry ID {{ entry["id"] }}</th>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">From</th>
-							<td style="width: 100%; text-align: left;">{{ entry["entry"]["from"] }}</td>
+							<td style="width: 100%; text-align: left;">{{ entry["from"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">Severity</th>
+							<td style="width: 100%; text-align: left;">{{ entry["severity"] }}</td>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">Comment</th>
-							<td style="width: 100%; text-align: left;">{{ entry["entry"]["comment"] }}</td>
+							<td style="width: 100%; text-align: left;">{{ entry["comment"] }}</td>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">Timestamp</th>
-							<td style="width: 100%; text-align: left;">{{ entry["entry"]["timestamp"] }}</td>
+							<td style="width: 100%; text-align: left;">{{ entry["timestamp"] }}</td>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: center;" scope="row">JSON</th>
 							<td style="width: 100%; text-align: left;">
 								<pre id="json" style="white-space: pre-line; new-line: keep-all;">
-									<code>{{ entry["entry"]["body"] }}</code>
+									<code>{{ entry["body"] }}</code>
 								</pre>
 							</td>
 						</tr>
@@ -48,6 +58,24 @@
 				</tbody>
 			</table>
 		</div>
+		<script>
+			window.onscroll = function() {scrollFunction()};
+
+			var navbar = document.getElementById("navbar");
+			var sticky = navbar.offsetTop;
+
+			function scrollFunction() 
+			{
+			  if (window.pageYOffset > sticky) 
+			  {
+				navbar.classList.add("sticky")
+			  } 
+			  else 
+			  {
+				navbar.classList.remove("sticky");
+			  }
+			}
+		</script>
 	</body>
 	<footer>
 

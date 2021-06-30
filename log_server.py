@@ -19,22 +19,24 @@ entry_list = []
 
 
 class LogEntry:
-    def __init__(self, body=None, to="Unknown", s_from="Unknown", comm="Not Specified"):
+    def __init__(self, body=None, severity="Information", s_from="Unknown", comm="Not Specified"):
         global global_id
         self.msg_id = global_id
-        self.entry = {
-            "to": to,
-            "from": s_from,
-            "comment": comm,
-            "timestamp": datetime.datetime.now().strftime("%d-%m-%Y : %H:%M:%S.%f"),
-            "body": {} if None else body
-        }
+        self.log_from = s_from
+        self.severity = severity
+        self.comment = comm
+        self.timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f - %d/%m/%Y")
+        self.body = body
         global_id += 1
 
     def json(self):
         out = {
             "id": self.msg_id,
-            "entry": self.entry
+            "from": self.log_from,
+            "severity": self.severity,
+            "comment": self.comment,
+            "timestamp": self.timestamp,
+            "body": self.body
         }
         return out
 
@@ -53,7 +55,7 @@ def clear_logs():
             req_comm = req["comment"]
         except KeyError:
             req_comm = "Log Clear Request"
-        entry = LogEntry(to="Log Server", s_from=req_from, comm=req_comm)
+        entry = LogEntry(severity="Information", s_from=req_from, comm=req_comm)
         entry_list.clear()
         entry_list.append(entry)
         return show_recent_entries()
@@ -65,13 +67,13 @@ def clear_logs():
 def add_entry():
     try:
         req = request.json
-        req_to = "Unknown"
+        req_severity = "Unknown"
         req_from = "Unknown"
         req_comm = "Not Specified"
         req_body = {}
         inputs = 0
         try:
-            req_to = req["to"]
+            req_severity = req["severity"]
             inputs += 1
         except KeyError:
             pass
@@ -91,7 +93,7 @@ def add_entry():
         except KeyError:
             pass
         if inputs > 0:
-            entry = LogEntry(req_body, req_to, req_from, req_comm)
+            entry = LogEntry(req_body, req_severity, req_from, req_comm)
             entry_list.append(entry)
             return show_recent_entries()
         else:
@@ -104,7 +106,7 @@ def add_entry():
 def show_recent_entries():
     out = {
         "count": len(entry_list),
-        "last_update": datetime.datetime.now().strftime("%d-%m-%Y : %H:%M:%S"),
+        "last_update": datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y"),
         "entries": []
     }
     for entry in reversed(entry_list):
@@ -116,7 +118,7 @@ def show_recent_entries():
 def show_entries():
     out = {
         "count": len(entry_list),
-        "last_update": datetime.datetime.now().strftime("%d-%m-%Y : %H:%M:%S"),
+        "last_update": datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y"),
         "entries": []
     }
     for entry in entry_list:
@@ -128,9 +130,16 @@ def serve_page(json_data, return_code):
     return render_template("log_table_flask.html", data=json_data), return_code
 
 
+def d_fill_server():
+    for i in range(100):
+        entry = LogEntry({}, "Testing", "Local", "Teste de navegacao")
+        entry_list.append(entry)
+
+
 def main():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
 
 
 if __name__ == "__main__":
+    d_fill_server()
     main()
