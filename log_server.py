@@ -167,5 +167,4 @@ def main():
 
 
 if __name__ == "__main__":
-    d_fill_server()
     main()
