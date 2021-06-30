@@ -15,7 +15,7 @@ entry_list = []
 
 
 class LogEntry:
-    def __init__(self, body=None, severity="Information", s_from="Unknown", comm="Not Specified"):
+    def __init__(self, s_from="Unknown", severity="Information", comm="Not Specified", body=None):
         global global_id
         self.msg_id = global_id
         self.log_from = s_from
@@ -49,7 +49,7 @@ def clear_logs():
             req_comm = req["comment"]
         except KeyError:
             req_comm = "Log Clear Request"
-        entry = LogEntry(severity="Information", s_from=req_from, comm=req_comm)
+        entry = LogEntry(s_from=req_from, severity="Information", comm=req_comm)
         entry_list.clear()
         entry_list.append(entry)
         return show_recent_entries()
@@ -87,7 +87,7 @@ def add_entry():
         except KeyError:
             pass
         if inputs > 0:
-            entry = LogEntry(req_body, req_severity, req_from, req_comm)
+            entry = LogEntry(req_from, req_severity, req_comm, req_body)
             entry_list.append(entry)
             return show_recent_entries()
         else:
@@ -158,7 +158,7 @@ def serve_page(json_data, return_code):
 
 def d_fill_server():
     for i in range(100):
-        entry = LogEntry({}, "Testing", "Local", "Teste de navegacao")
+        entry = LogEntry("Local", "Testing", "Teste de navegacao", {})
         entry_list.append(entry)
 
 
