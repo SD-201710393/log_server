@@ -142,7 +142,7 @@ def prepare_page():
     else:
         max_page = int(entries / per_page) + 1
     out = {
-        "page": cur_page,
+        "page": (cur_page if entries > 0 else 0),
         "page_max": max_page,
         "epp": per_page,
         "count": entries,
