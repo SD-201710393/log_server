@@ -187,5 +187,5 @@ def main():
 
 
 if __name__ == "__main__":
-    entry_list.append(LogEntry("Local", "Information", "Log Server Started", {}))
+    entry_list.append(LogEntry("Internal", "Success", "Log Server Started", {}))
     main()
