@@ -1,11 +1,5 @@
 import datetime
-from datetime import timedelta
-import json
 import os
-import threading
-import time
-import requests
-from operator import itemgetter
 from flask import Flask
 from flask import request
 from flask import render_template
@@ -45,8 +39,6 @@ class LogEntry:
 def clear_logs():
     try:
         req = request.json
-        req_from = "Unknown"
-        req_comm = "Not Specified"
         try:
             req_from = req["from"]
         except KeyError:
@@ -141,5 +133,5 @@ def main():
 
 
 if __name__ == "__main__":
-    d_fill_server()
+    # d_fill_server()
     main()
