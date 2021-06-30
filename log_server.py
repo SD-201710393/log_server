@@ -8,9 +8,9 @@ from werkzeug.exceptions import BadRequest
 app = Flask(__name__)
 
 global_id = 0
-update_cycle = 5    # How many seconds between each update
-per_page = 20       # How many entries per page
-cur_page = 1        # Current page
+update_cycle = 5  # How many seconds between each update
+per_page = 20  # How many entries per page
+cur_page = 1  # Current page
 entry_list = []
 
 
@@ -23,6 +23,9 @@ class LogEntry:
         self.comment = comm
         self.timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f - %d/%m/%Y")
         self.body = body
+        self.flavor = {  # Cosmetics hints
+            "severity": severity_flavor_keys(severity)
+        }
         global_id += 1
 
     def json(self):
@@ -32,7 +35,8 @@ class LogEntry:
             "severity": self.severity,
             "comment": self.comment,
             "timestamp": self.timestamp,
-            "body": self.body
+            "body": self.body,
+            "flavor": self.flavor
         }
         return out
 
@@ -100,7 +104,7 @@ def add_entry():
 def show_recent_entries():
     out = prepare_page()
     rev = entry_list[::-1]
-    for entry in rev[(cur_page-1) * per_page:]:
+    for entry in rev[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
         if len(out["entries"]) == per_page:
             break
@@ -110,7 +114,7 @@ def show_recent_entries():
 @app.route('/log/old', methods=['GET'])
 def show_entries():
     out = prepare_page()
-    for entry in entry_list[(cur_page-1) * per_page:]:
+    for entry in entry_list[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
         if len(out["entries"]) == per_page:
             break
@@ -156,6 +160,20 @@ def serve_page(json_data, return_code):
     return render_template("log_table_flask.html", data=json_data), return_code
 
 
+def severity_flavor_keys(severity: str):
+    sev = severity.lower()
+    if sev == "warning":
+        return "sev_warning"
+    if sev == "attention":
+        return "sev_attention"
+    if sev == "error":
+        return "sev_error"
+    if sev == "critical":
+        return "sev_critical"
+    else:
+        return "sev_default"
+
+
 def d_fill_server():
     for i in range(100):
         entry = LogEntry("Local", "Testing", "Teste de navegacao", {})
@@ -167,4 +185,5 @@ def main():
 
 
 if __name__ == "__main__":
+    entry_list.append(LogEntry("Local", "Information", "Log Server Started", {}))
     main()

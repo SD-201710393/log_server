@@ -109,6 +109,23 @@ th {
 	background-color: #03b6fc;
 }
 
+.sev_warning {
+	color: #000;
+	background-color: #ff0;
+}
+
+.sev_attention {
+	background-color: #f70;
+}
+
+.sev_error {
+	background-color: #f21;
+}
+
+.sev_critical {
+	background-color: #a02;
+}
+
 th.entry_id {
 	background-color: #03b600;
 }
