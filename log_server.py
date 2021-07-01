@@ -192,5 +192,4 @@ def main():
 
 if __name__ == "__main__":
     entry_list.append(LogEntry("Internal", "Success", "Log Server Started", {}))
-    d_fill_server()
     main()
