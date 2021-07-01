@@ -166,15 +166,15 @@ def serve_page(json_data, return_code):
 
 def severity_flavor_keys(severity: str):
     sev = severity.lower()
-    if sev == "warning":
+    if sev == "warning" or sev == "aviso":
         return "sev_warning"
-    if sev == "attention":
+    if sev == "attention" or sev == "atencao" or sev == "alerta":
         return "sev_attention"
-    if sev == "error":
+    if sev == "error" or sev == "erro":
         return "sev_error"
-    if sev == "critical":
+    if sev == "critical" or sev == "critico":
         return "sev_critical"
-    if sev == "success":
+    if sev == "success" or sev == "sucesso":
         return "sev_success"
     else:
         return "sev_default"

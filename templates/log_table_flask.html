@@ -48,12 +48,12 @@
 							<th class="entry_id" style="width: 100%; text-align: center;" colspan="2" scope="colgroup">Entry ID {{ entry["id"] }}</th>
 						</tr>
 						<tr>
-							<th style="width: 10%; text-align: right;" scope="row">From</th>
-							<td style="width: 100%; text-align: left;">{{ entry["from"] }}</td>
-						</tr>
-						<tr>
 							<th class="{{ entry["flavor"]["severity"] }}" style="width: 10%; text-align: right;" scope="row">Severity</th>
 							<td class="{{ entry["flavor"]["severity"] }}" style="width: 100%; text-align: left;">{{ entry["severity"] }}</td>
+						</tr>
+						<tr>
+							<th style="width: 10%; text-align: right;" scope="row">From</th>
+							<td style="width: 100%; text-align: left;">{{ entry["from"] }}</td>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">Comment</th>
