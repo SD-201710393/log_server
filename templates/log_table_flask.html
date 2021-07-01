@@ -9,27 +9,36 @@
 		<div id="navbar">
 			<p class="active">Total Entries: {{ data["count"] }}</p>
 			{% if data["page"] > 1%}
+				<a class="common_nav" href="?p=1&epp={{data["epp"]}}"><<</a>
 				<a class="common_nav" href="?p={{data["page"]-1}}&epp={{data["epp"]}}"><</a>
 			{% else %}
+				<p class="disabled_nav"><<</p>
 				<p class="disabled_nav"><</p>
 			{% endif %}
 			<p class="common_nav">Page {{ data["page"] }} / {{ data["page_max"] }}</p>
 			{% if data["page"] < data["page_max"] %}
 				<a class="common_nav" href="?p={{data["page"]+1}}&epp={{data["epp"]}}">></a>
+				<a class="common_nav" href="?p={{data["page_max"]}}&epp={{data["epp"]}}">>></a>
 			{% else %}
 				<p class="disabled_nav">></p>
+				<p class="disabled_nav">>></p>
 			{% endif %}
 			<div class="nav_dropdown">
-				<button class="dropbtn">{{ data["epp"] }} Entries per Page
+				<button class="dropbtn">Entries per Page
 				</button>
 				<div class="drop-content">
-					<a href="?p=1&epp=10">10 Entries</a>
-					<a href="?p=1&epp=20">20 Entries</a>
-					<a href="?p=1&epp=50">50 Entries</a>
+					<a href="?p={{ data["page"] }}&epp=10">10 Entries</a>
+					<a href="?p={{ data["page"] }}&epp=20">20 Entries</a>
+					<a href="?p={{ data["page"] }}&epp=50">50 Entries</a>
 				</div>
 			</div>
 			<p class="update_time">Updated: {{ data["last_update"] }}</p>
 			<a class="update_time" href="?">Refresh</a>
+			{% if '/old' in request.url_rule.rule %}
+				<a class="update_time" href="../log">Oldest First</a>
+			{% elif 'log' in request.url_rule.rule %}
+				<a class="update_time" href="log/old">Newest First</a>
+			{% endif %}
 		</div>
 		<div id="log_info_table">
 			<table class="table_data" style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">

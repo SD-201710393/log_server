@@ -1,5 +1,7 @@
 import datetime
 import os
+import unicodedata
+
 from flask import Flask
 from flask import request
 from flask import render_template
@@ -8,9 +10,8 @@ from werkzeug.exceptions import BadRequest
 app = Flask(__name__)
 
 global_id = 0
-update_cycle = 5  # How many seconds between each update
-per_page = 20  # How many entries per page
-cur_page = 1  # Current page
+update_cycle = 5    # How many seconds between each update
+def_per_page = 20   # How many entries per page
 entry_list = []
 
 
@@ -102,7 +103,7 @@ def add_entry():
 
 @app.route('/log', methods=['GET'])
 def show_recent_entries():
-    out = prepare_page()
+    out, cur_page, max_page, per_page = prepare_page()
     rev = entry_list[::-1]
     for entry in rev[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
@@ -113,7 +114,7 @@ def show_recent_entries():
 
 @app.route('/log/old', methods=['GET'])
 def show_entries():
-    out = prepare_page()
+    out, cur_page, max_page, per_page = prepare_page()
     for entry in entry_list[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
         if len(out["entries"]) == per_page:
@@ -121,30 +122,33 @@ def show_entries():
     return serve_page(out, 200)
 
 
-def prepare_page():
-    global per_page
-    global cur_page
-    entries = len(entry_list)
-    div = entries % per_page
+def get_page_format():     # Returns the page, max page and epp based on the url arguments
+    entry_count = len(entry_list)
+    try:
+        if request.args.get("epp") is not None and 0 < int(request.args.get("epp")) <= entry_count:
+            per_page = int(request.args.get("epp"))
+        else:
+            per_page = def_per_page
+    except ValueError:  # Field 'epp=" was too big
+        per_page = def_per_page
+    div = entry_count % per_page
     if div == 0:
-        max_page = int(entries / per_page)
+        max_page = int(entry_count / per_page)
     else:
-        max_page = int(entries / per_page) + 1
+        max_page = int(entry_count / per_page) + 1
     try:
         if request.args.get("p") is not None and max_page >= int(request.args.get("p")) > 0:
             cur_page = int(request.args.get("p"))
+        else:
+            cur_page = 1
     except ValueError:  # Field 'p=' wasn't an integer
         cur_page = 1
-    try:
-        if request.args.get("epp") is not None and 0 < int(request.args.get("epp")) <= len(entry_list):
-            per_page = int(request.args.get("epp"))
-    except ValueError:  # Field 'epp=" was too big
-        per_page = 20
-    div = entries % per_page
-    if div == 0:
-        max_page = int(entries / per_page)
-    else:
-        max_page = int(entries / per_page) + 1
+    return cur_page, max_page, per_page
+
+
+def prepare_page():
+    cur_page, max_page, per_page = get_page_format()
+    entries = len(entry_list)
     out = {
         "page": (cur_page if entries > 0 else 0),
         "page_max": max_page,
@@ -153,7 +157,7 @@ def prepare_page():
         "last_update": datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y"),
         "entries": []
     }
-    return out
+    return out, cur_page, max_page, per_page
 
 
 def serve_page(json_data, return_code):
@@ -178,7 +182,7 @@ def severity_flavor_keys(severity: str):
 
 def d_fill_server():
     for i in range(100):
-        entry = LogEntry("Local", "Testing", "Teste de navegacao", {})
+        entry = LogEntry("Internal", "Testing", "Navigation Test", {})
         entry_list.append(entry)
 
 
