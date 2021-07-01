@@ -24,7 +24,7 @@ class LogEntry:
         self.comment = comm
         self.timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f - %d/%m/%Y")
         self.body = body
-        self.flavor = {  # Cosmetics hints
+        self.flavor = {  # Cosmetic hints
             "severity": severity_flavor_keys(severity)
         }
         global_id += 1
@@ -192,4 +192,5 @@ def main():
 
 if __name__ == "__main__":
     entry_list.append(LogEntry("Internal", "Success", "Log Server Started", {}))
+    d_fill_server()
     main()

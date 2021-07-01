@@ -24,7 +24,7 @@
 				<p class="disabled_nav">>></p>
 			{% endif %}
 			<div class="nav_dropdown">
-				<button class="dropbtn">Entries per Page
+				<button class="dropbtn">{{ data["epp"] }} Entries per Page
 				</button>
 				<div class="drop-content">
 					<a href="?p={{ data["page"] }}&epp=10">10 Entries</a>
@@ -33,7 +33,7 @@
 				</div>
 			</div>
 			<p class="update_time">Updated: {{ data["last_update"] }}</p>
-			<a class="update_time" href="?">Refresh</a>
+			<a class="update_time" href="?p={{ data["page"] }}&epp={{ data["epp"] }}">Refresh</a>
 			{% if '/old' in request.url_rule.rule %}
 				<a class="update_time" href="../log">Oldest First</a>
 			{% elif 'log' in request.url_rule.rule %}
