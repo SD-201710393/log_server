@@ -337,5 +337,4 @@ def main():
 
 if __name__ == "__main__":
     internal_log(severity="Success", comment="Log Server Started successfully")
-    d_fill_server()
     main()
