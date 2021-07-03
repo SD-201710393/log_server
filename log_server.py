@@ -16,8 +16,6 @@ app = Flask(__name__)
 global_id = 0
 service_timeout = 10        # How many seconds between services? Used to prevent spam abuse and lock the log server
 is_service_locked = False   # If true, another service cannot be invoked
-have_new_entry = False      # If true, a new entry was added. Used to flash the Update button orange
-force_update = False        # If true, in the next '/server/status' request, force the page to update
 def_per_page = 20           # How many entries per page
 entry_list = []
 
@@ -58,23 +56,15 @@ class LogEntry:
 
 @app.route('/server/status', methods=["GET"])   # Used to fetch data
 def server_fetch():
-    global force_update
-    global have_new_entry
     internal = {
-        "refresh": force_update,
-        "new_data": have_new_entry,
+        "entry_count": len(entry_list),
         "services_timedout": is_service_locked
     }
-    if force_update:
-        force_update = False
-    if have_new_entry:
-        have_new_entry = False
     return json.dumps(internal), 200
 
 
 @app.route('/log/clear', methods=["POST"])
 def clear_logs():
-    global have_new_entry
     try:
         req = request.json
         try:
@@ -88,7 +78,6 @@ def clear_logs():
         entry = LogEntry(s_from=req_from, severity="Information", comm=req_comm)
         entry_list.clear()
         entry_list.append(entry)
-        have_new_entry = True
         return show_recent_entries()
     except BadRequest:
         return "Bad Request Ignored", 400
@@ -96,7 +85,6 @@ def clear_logs():
 
 @app.route('/log', methods=["POST"])
 def add_entry():
-    global have_new_entry
     try:
         req = request.json
         req_severity = "Unknown"
@@ -125,7 +113,6 @@ def add_entry():
         except KeyError:
             pass
         if inputs > 0:
-            have_new_entry = True
             entry_list.append(LogEntry(req_from, req_severity, req_comm, req_body))
             return show_recent_entries()
         else:
@@ -313,8 +300,6 @@ def user_shade_flavor_keys():
 
 
 def internal_log(severity="Information", comment="Not Specified", body=None):
-    global have_new_entry
-    have_new_entry = True
     entry_list.append(LogEntry("Internal", severity, comment, ({} if body is None else body)))
     entry_list[-1].flavor["user_shade"] = "internal"
 

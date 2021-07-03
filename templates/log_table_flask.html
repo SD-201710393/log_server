@@ -125,11 +125,7 @@
 					function (response) {
 						return response.json();
 					}).then(function (json) {
-						console.log(json);
-						if(json["refresh"]) {
-							refresh();
-						}
-						if(json["new_data"]) {
+						if(json["entry_count"] != {{ data["count"] }}) {
 							if (auto_update) {
 								refresh();
 							}
