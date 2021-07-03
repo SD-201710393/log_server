@@ -1,18 +1,31 @@
 import datetime
+import json
 import os
-import unicodedata
+import threading
+import time
 
 from flask import Flask
 from flask import request
 from flask import render_template
 from werkzeug.exceptions import BadRequest
 
+from server_services import pull_info
+
 app = Flask(__name__)
 
 global_id = 0
-update_cycle = 5    # How many seconds between each update
-def_per_page = 20   # How many entries per page
+service_timeout = 10        # How many seconds between services? Used to prevent spam abuse and lock the log server
+is_service_locked = False   # If true, another service cannot be invoked
+have_new_entry = False      # If true, a new entry was added. Used to flash the Update button orange
+force_update = False        # If true, in the next '/server/status' request, force the page to update
+def_per_page = 20           # How many entries per page
 entry_list = []
+
+known_servers = ["https://sd-rdm.herokuapp.com", "https://sd-201620236.herokuapp.com",
+                 "https://sd-jhsq.herokuapp.com", "https://sd-app-server-jesulino.herokuapp.com",
+                 "https://sd-mgs.herokuapp.com", "https://sd-dmss.herokuapp.com"]
+shadow_servers = ["https://sd-rdm-shadow1.herokuapp.com", "https://sd-rdm-shadow2.herokuapp.com"]
+secondary_servers = []
 
 
 class LogEntry:
@@ -25,7 +38,8 @@ class LogEntry:
         self.timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f - %d/%m/%Y")
         self.body = body
         self.flavor = {  # Cosmetic hints
-            "severity": severity_flavor_keys(severity)
+            "severity": severity_flavor_keys(severity),
+            "user_shade": user_shade_flavor_keys()
         }
         global_id += 1
 
@@ -42,8 +56,25 @@ class LogEntry:
         return out
 
 
+@app.route('/server/status', methods=["GET"])   # Used to fetch data
+def server_fetch():
+    global force_update
+    global have_new_entry
+    internal = {
+        "refresh": force_update,
+        "new_data": have_new_entry,
+        "services_timedout": service_timeout
+    }
+    if force_update:
+        force_update = False
+    if have_new_entry:
+        have_new_entry = False
+    return json.dumps(internal), 200
+
+
 @app.route('/log/clear', methods=["POST"])
 def clear_logs():
+    global have_new_entry
     try:
         req = request.json
         try:
@@ -57,6 +88,7 @@ def clear_logs():
         entry = LogEntry(s_from=req_from, severity="Information", comm=req_comm)
         entry_list.clear()
         entry_list.append(entry)
+        have_new_entry = True
         return show_recent_entries()
     except BadRequest:
         return "Bad Request Ignored", 400
@@ -64,6 +96,7 @@ def clear_logs():
 
 @app.route('/log', methods=["POST"])
 def add_entry():
+    global have_new_entry
     try:
         req = request.json
         req_severity = "Unknown"
@@ -92,8 +125,8 @@ def add_entry():
         except KeyError:
             pass
         if inputs > 0:
-            entry = LogEntry(req_from, req_severity, req_comm, req_body)
-            entry_list.append(entry)
+            have_new_entry = True
+            entry_list.append(LogEntry(req_from, req_severity, req_comm, req_body))
             return show_recent_entries()
         else:
             return "Empty Entry Ignored", 400
@@ -103,6 +136,7 @@ def add_entry():
 
 @app.route('/log', methods=['GET'])
 def show_recent_entries():
+    handle_log_services()
     out, cur_page, max_page, per_page = prepare_page()
     rev = entry_list[::-1]
     for entry in rev[(cur_page - 1) * per_page:]:
@@ -114,6 +148,7 @@ def show_recent_entries():
 
 @app.route('/log/old', methods=['GET'])
 def show_entries():
+    handle_log_services()
     out, cur_page, max_page, per_page = prepare_page()
     for entry in entry_list[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
@@ -122,7 +157,98 @@ def show_entries():
     return serve_page(out, 200)
 
 
-def get_page_format():     # Returns the page, max page and epp based on the url arguments
+# noinspection PyBroadException
+@app.route('/info', methods=['POST'])
+def set_info():
+    global secondary_servers
+    try:
+        if "secondary_servers" in request.json:
+            secondary_servers = request.json["secondary_servers"]
+    except ValueError:
+        internal_log(severity="Attention", comment="Invalid value received when setting data", body=request.json)
+    except TypeError:
+        internal_log(severity="Error", comment="Request have an invalid type", body=request.json)
+    except Exception as exc:
+        internal_log(severity="Critical", comment=str(exc), body=request.json)
+
+
+@app.route('/info', methods=['GET'])
+def info():
+    out = {
+        "note": "Wrong server for that, pal ;)",
+        "componente": "Log Server",
+        "versao": "1.0.1",
+        "descricao": "Provides a public, default and easy to use visual log interface",
+        "ponto_de_acesso": "https://sd-log-server.herokuapp.com",
+        "status": "Always up",
+        "identificacao": -1,
+        "lider": 0,
+        "eleicao": "All of them ;)",
+        "sobre": ["Fully coded, back & front by Ramon Darwich de Menezes", "https://github.com/XLM-205",
+                  "http://lattes.cnpq.br/2510824092604238"],
+        "databases": {
+            "servers": {
+                "known_servers": known_servers,
+                "secondary_servers": secondary_servers
+            }
+        }
+    }
+    return json.dumps(out), 418
+
+
+# noinspection PyBroadException
+def handle_log_services():     # If supplied by the url, execute services
+    global force_update
+    try:
+        urls = []
+        if request.args.get("ssrc") is None:        # If no 'ssrc', 'Server SouRCe' supplied, just abort handling
+            return
+        elif "all" in request.args.get("ssrc"):     # Use all known servers
+            urls = known_servers
+        elif "shadow" in request.args.get("ssrc"):  # Use the shadow servers
+            urls = shadow_servers
+        elif "secondary" in request.args.get("ssrc"):
+            if len(secondary_servers) == 0:
+                internal_log(severity="Attention",
+                             comment="Request for internal service with empty secondary url database defined!")
+            else:
+                urls = secondary_servers
+        else:
+            internal_log(severity="Error", comment="Request for internal service without url database defined!")
+            return
+        # All ready to process the request
+        if is_service_locked is False:
+            internal_log(severity="Success", comment="Working on your service request. This page will update shortly...")
+            if request.args.get("pi") is not None:  # Pulling info from all servers
+                threading.Thread(target=handle_and_force_update, args=(urls, request.args.get("pi"))).start()
+        else:
+            internal_log(severity="Warning",
+                         comment=f"Services are in time out. Please wait {service_timeout} seconds before the next request")
+        threading.Thread(target=enforce_timeout).start()
+    except Exception as exc:
+        internal_log(severity="Critical", comment=str(exc), body=request.json)
+
+
+def handle_and_force_update(urls, special=None):    # All demanding tasks that require an update afterwards
+    global force_update
+    try:
+        pi_data, valid_servers, invalid_servers = pull_info(urls)
+        if 'v' in special:
+            for server in pi_data:
+                internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
+        else:
+            for server in invalid_servers:
+                internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
+        internal_log(severity="Success",
+                     comment=f"Server pull finished. {len(valid_servers)} servers are ready",
+                     body=valid_servers)
+    except Exception as exc:
+        internal_log(severity="Critical", comment=str(exc), body=request.json)
+    # Function ended, ask for update
+    force_update = True
+
+
+def get_page_format():      # Returns the page, max page and epp based on the url arguments
     entry_count = len(entry_list)
     try:
         if request.args.get("epp") is not None and 0 < int(request.args.get("epp")) <= entry_count:
@@ -180,10 +306,29 @@ def severity_flavor_keys(severity: str):
         return "sev_default"
 
 
+def user_shade_flavor_keys():
+    # usr = user_shade.lower()
+    # If more users want colors, add them here, but NEVER add the "Internal", that should be handled manually!
+    return "usr_default"
+
+
+def internal_log(severity="Information", comment="Not Specified", body=None):
+    global have_new_entry
+    have_new_entry = True
+    entry_list.append(LogEntry("Internal", severity, comment, ({} if body is None else body)))
+    entry_list[-1].flavor["user_shade"] = "internal"
+
+
+def enforce_timeout():
+    global is_service_locked
+    is_service_locked = True
+    time.sleep(service_timeout)
+    is_service_locked = False
+
+
 def d_fill_server():
     for i in range(100):
-        entry = LogEntry("Internal", "Testing", "Navigation Test", {})
-        entry_list.append(entry)
+        internal_log("Testing", "Navigation Test")
 
 
 def main():
@@ -191,5 +336,5 @@ def main():
 
 
 if __name__ == "__main__":
-    entry_list.append(LogEntry("Internal", "Success", "Log Server Started", {}))
+    internal_log(severity="Success", comment="Log Server Started successfully")
     main()

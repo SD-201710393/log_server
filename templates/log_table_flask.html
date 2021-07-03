@@ -5,7 +5,7 @@
 	</head>
 	<header>
 	</header>
-	<body>
+	<body onload="loaded()">
 		<div id="navbar">
 			<p class="active">Total Entries: {{ data["count"] }}</p>
 			{% if data["page"] > 1%}
@@ -24,21 +24,28 @@
 				<p class="disabled_nav">>></p>
 			{% endif %}
 			<div class="nav_dropdown">
-				<button class="dropbtn">{{ data["epp"] }} Entries per Page
-				</button>
+				<button class="dropbtn">{{ data["epp"] }} Entries per Page</button>
 				<div class="drop-content">
 					<a href="?p={{ data["page"] }}&epp=10">10 Entries</a>
 					<a href="?p={{ data["page"] }}&epp=20">20 Entries</a>
 					<a href="?p={{ data["page"] }}&epp=50">50 Entries</a>
 				</div>
 			</div>
-			<p class="update_time">Server Time: {{ data["last_update"] }}</p>
-			<a class="update_time" href="?p={{ data["page"] }}&epp={{ data["epp"] }}">Update</a>
 			{% if '/old' in request.url_rule.rule %}
-				<a class="update_time" href="../log">Oldest First</a>
+				<a class="common_nav" href="../log">Oldest First</a>
 			{% elif 'log' in request.url_rule.rule %}
-				<a class="update_time" href="log/old">Newest First</a>
+				<a class="common_nav" href="log/old">Newest First</a>
 			{% endif %}
+						<div class="nav_dropdown">
+				<button class="dropbtn">Services</button>
+				<div class="drop-content">
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=s">Simplified '/info'</a>
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=v">Full '/info'</a>
+				</div>
+			</div>
+			<a class="common_nav" id="auto_update_btn" onclick="toggle_auto()">Manual Update</a>
+			<p class="right_nav">Server Time: {{ data["last_update"] }}</p>
+			<a class="right_nav" id="update_btn" href="?p={{ data["page"] }}&epp={{ data["epp"] }}">Update</a>
 		</div>
 		<div id="log_info_table">
 			<table class="table_data" style="border-collapse: collapse; text-align: right; width: 100%; text-align: right;" border="1">
@@ -53,7 +60,7 @@
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">From</th>
-							<td style="width: 100%; text-align: left;">{{ entry["from"] }}</td>
+							<td class="{{ entry["flavor"]["user_shade"] }}" style="width: 100%; text-align: left;">{{ entry["from"] }}</td>
 						</tr>
 						<tr>
 							<th style="width: 10%; text-align: right;" scope="row">Comment</th>
@@ -79,20 +86,68 @@
 			window.onscroll = function() {scrollFunction()};
 
 			var navbar = document.getElementById("navbar");
-			var dropcont = document.getElementById("drop-content");
 			var sticky = navbar.offsetTop;
+			var auto_update = false;
+
+			function loaded() {
+				if(window.localStorage.getItem("auto_update") != null) {
+					auto_update = (window.localStorage.getItem("auto_update") == "t" ? true : false);
+				}
+				if (auto_update) {
+					document.getElementById("auto_update_btn").className = "update_auto";
+					document.getElementById("auto_update_btn").innerHTML = "Auto Update";
+				}
+				fetcher();
+			}
+
+			function toggle_auto() {
+				auto_update = !auto_update;
+				if (auto_update) {
+					document.getElementById("auto_update_btn").className = "update_auto";
+					document.getElementById("auto_update_btn").innerHTML = "Auto Update";
+				}
+				else {
+					document.getElementById("auto_update_btn").className = "common_nav";
+					document.getElementById("auto_update_btn").innerHTML = "Manual Update";
+				}
+				window.localStorage.setItem("auto_update", (auto_update ? "t" : "f"));
+			}
+
+			function refresh() {
+				window.location.reload(true);
+				document.location.href ="?p={{ data["page"] }}&epp={{ data["epp"] }}"
+			}
+
+			function fetcher() {
+				fetch('/server/status').then(
+					function (response) {
+						return response.json();
+					}).then(function (json) {
+						console.log(json);
+						if(json["refresh"]) {
+							refresh();
+						}
+						if(json["new_data"]) {
+							if (auto_update) {
+								refresh();
+							}
+							else {
+								document.getElementById("update_btn").className = "update_me";
+							}
+						}
+					setTimeout(fetcher, 3000);
+				});
+			}
 
 			function scrollFunction() 
 			{
 			  if (window.pageYOffset > sticky) 
 			  {
 				navbar.classList.add("sticky");
-				dropcont.classList.add("sticky");
 			  } 
 			  else 
 			  {
 				navbar.classList.remove("sticky");
-				dropcont.classList.add("sticky");
 			  }
 			}
 		</script>
