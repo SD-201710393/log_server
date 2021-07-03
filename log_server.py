@@ -63,7 +63,7 @@ def server_fetch():
     internal = {
         "refresh": force_update,
         "new_data": have_new_entry,
-        "services_timedout": service_timeout
+        "services_timedout": is_service_locked
     }
     if force_update:
         force_update = False
@@ -337,4 +337,5 @@ def main():
 
 if __name__ == "__main__":
     internal_log(severity="Success", comment="Log Server Started successfully")
+    d_fill_server()
     main()

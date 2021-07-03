@@ -82,11 +82,13 @@
 				</tbody>
 			</table>
 		</div>
-		<script>
+	</body>
+	<script>
 			window.onscroll = function() {scrollFunction()};
 
 			var navbar = document.getElementById("navbar");
 			var sticky = navbar.offsetTop;
+
 			var auto_update = false;
 
 			function loaded() {
@@ -97,7 +99,7 @@
 					document.getElementById("auto_update_btn").className = "update_auto";
 					document.getElementById("auto_update_btn").innerHTML = "Auto Update";
 				}
-				fetcher();
+				setTimeout(fetcher, 3000);
 			}
 
 			function toggle_auto() {
@@ -115,7 +117,7 @@
 
 			function refresh() {
 				window.location.reload(true);
-				document.location.href ="?p={{ data["page"] }}&epp={{ data["epp"] }}"
+				document.location.href ="?p=" + {{ data["page"] }} + "&epp=" + {{ data["epp"] }};
 			}
 
 			function fetcher() {
@@ -133,25 +135,25 @@
 							}
 							else {
 								document.getElementById("update_btn").className = "update_me";
+								document.title = '* New Entry';
 							}
 						}
 					setTimeout(fetcher, 3000);
 				});
 			}
 
-			function scrollFunction() 
+			function scrollFunction()
 			{
-			  if (window.pageYOffset > sticky) 
+			  if (window.pageYOffset > sticky)
 			  {
 				navbar.classList.add("sticky");
-			  } 
-			  else 
+			  }
+			  else
 			  {
 				navbar.classList.remove("sticky");
 			  }
 			}
 		</script>
-	</body>
 	<footer>
 
 	</footer>
