@@ -9,7 +9,7 @@ from flask import request
 from flask import render_template
 from werkzeug.exceptions import BadRequest
 
-from server_services import pull_info
+from server_services import pull_info, simulate_election
 
 app = Flask(__name__)
 
@@ -91,27 +91,23 @@ def add_entry():
         req_from = "Unknown"
         req_comm = "Not Specified"
         req_body = {}
-        inputs = 0
+        inputs = 4
         try:
             req_severity = req["severity"]
-            inputs += 1
         except KeyError:
-            pass
+            inputs -= 1
         try:
             req_from = req["from"]
-            inputs += 1
         except KeyError:
-            pass
+            inputs -= 1
         try:
             req_comm = req["comment"]
-            inputs += 1
         except KeyError:
-            pass
+            inputs -= 1
         try:
             req_body = req["body"]
-            inputs += 1
         except KeyError:
-            pass
+            inputs -= 1
         if inputs > 0:
             entry_list.append(LogEntry(req_from, req_severity, req_comm, req_body))
             return show_recent_entries()
@@ -156,7 +152,7 @@ def set_info():
     except TypeError:
         internal_log(severity="Error", comment="Request have an invalid type", body=request.json)
     except Exception as exc:
-        internal_log(severity="Critical", comment=str(exc), body=request.json)
+        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
 
 
 @app.route('/info', methods=['GET'])
@@ -164,7 +160,7 @@ def info():
     out = {
         "note": "Wrong server for that, pal ;)",
         "componente": "Log Server",
-        "versao": "1.0.1",
+        "versao": "1.0.2",
         "descricao": "Provides a public, default and easy to use visual log interface",
         "ponto_de_acesso": "https://sd-log-server.herokuapp.com",
         "status": "Always up",
@@ -185,7 +181,6 @@ def info():
 
 # noinspection PyBroadException
 def handle_log_services():     # If supplied by the url, execute services
-    global force_update
     try:
         urls = []
         if request.args.get("ssrc") is None:        # If no 'ssrc', 'Server SouRCe' supplied, just abort handling
@@ -205,34 +200,51 @@ def handle_log_services():     # If supplied by the url, execute services
             return
         # All ready to process the request
         if is_service_locked is False:
-            internal_log(severity="Success", comment="Working on your service request. This page will update shortly...")
-            if request.args.get("pi") is not None:  # Pulling info from all servers
-                threading.Thread(target=handle_and_force_update, args=(urls, request.args.get("pi"))).start()
+            internal_log(severity="Success", comment="Working on your service request. Results coming shortly...")
+            arg_list = [request.args.get("pi"),     # Order is: [0] - Pull Info Mode | [1] - Election Simulation
+                        request.args.get("sime")]
+            threading.Thread(target=handle_demanding, args=(urls, arg_list)).start()
         else:
             internal_log(severity="Warning",
-                         comment=f"Services are in time out. Please wait {service_timeout} seconds before the next request")
+                         comment=f"Services are in time out. Please wait {service_timeout} seconds before another request")
         threading.Thread(target=enforce_timeout).start()
     except Exception as exc:
-        internal_log(severity="Critical", comment=str(exc), body=request.json)
+        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
 
 
-def handle_and_force_update(urls, special=None):    # All demanding tasks that require an update afterwards
-    global force_update
+def handle_demanding(urls, args=None):    # All demanding tasks that require an update afterwards
     try:
+        if args is None:
+            internal_log(severity="Attention", comment="Empty Demanding request ignored")
+            return
         pi_data, valid_servers, invalid_servers = pull_info(urls)
-        if 'v' in special:
-            for server in pi_data:
-                internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
-        else:
-            for server in invalid_servers:
-                internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
-        internal_log(severity="Success",
-                     comment=f"Server pull finished. {len(valid_servers)} servers are ready",
-                     body=valid_servers)
+        if args[0] is not None:
+            if 'v' in args[0]:
+                for server in pi_data:
+                    internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
+            else:
+                for server in invalid_servers:
+                    internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
+            internal_log(severity="Success",
+                         comment=f"Server pull finished. {len(valid_servers)} servers are ready",
+                         body=valid_servers)
+        if args[1] is not None:
+            if 'ring' in args[1]:
+                election_servers = [svr for svr, elec in valid_servers if 'anel' in elec]
+            elif 'bully' in args[1]:
+                election_servers = [svr for svr, elec in valid_servers if 'valentao' in elec]
+            else:
+                internal_log(severity="Warning", comment=f"Unsupported election of type '{args[1]}' requested")
+                return
+            if len(election_servers) == 0:
+                internal_log(severity="Attention", comment=f"There are no servers running '{args[1]}' elections")
+            elif len(election_servers) == 1:
+                internal_log(severity="Warning", comment=f"Only '{election_servers[0]}' is running '{args[1]}' elections")
+            entries = simulate_election(election_servers, args[1])
+            for entry in entries:
+                internal_log(entry[0], entry[1], entry[2])
     except Exception as exc:
-        internal_log(severity="Critical", comment=str(exc), body=request.json)
-    # Function ended, ask for update
-    force_update = True
+        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
 
 
 def get_page_format():      # Returns the page, max page and epp based on the url arguments

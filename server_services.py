@@ -1,3 +1,5 @@
+import random
+import string
 import threading
 import requests
 
@@ -25,7 +27,7 @@ def pull_info(urls):
     for t in thrs:
         t.join()
     pi_data = []
-    valid_list = []         # Just holds the URLs of valid servers
+    valid_list = []         # Holds the URLs of valid servers and it's election type
     invalid_list = []       # Holds all invalid servers
     for index, svr in enumerate(server_data):
         pi_info = {
@@ -69,7 +71,7 @@ def pull_info(urls):
                     pi_info["severity"] = "Warning"
                     invalid_list.append(pi_info)
                 else:
-                    valid_list.append(pi_info["server"])
+                    valid_list.append((pi_info["server"], pi_info["election"]))
             else:
                 pi_info["message"] = f"'{svr[1]}' didn't responded correctly"
                 pi_info["severity"] = "Attention"
@@ -89,3 +91,36 @@ def pull_info(urls):
         pi_info["body"] = svr[2]
         pi_data.append(pi_info)
     return pi_data, valid_list, invalid_list
+
+
+def simulate_election(targets, election_type):     # Returns the starter server and a log entry in a tuple
+    random.shuffle(targets)
+    log_entry = []
+    election = {
+        "id": "LogServer_" + ''.join(random.choices(string.ascii_letters + string.digits, k=5)),
+        "participantes": []
+    }
+    for server in targets:
+        try:
+            response = requests.post(server + '/eleicao', json=election)
+            if response.status_code == 200:
+                log_entry.append(("Success",
+                                  f"'{election_type}' Election '{election['id']}' request to server '{server}' was successful", election))
+                return log_entry
+            elif response.status_code == 400:
+                log_entry.append(("Error",
+                                  f"The Log Server sent a request that wasn't accepted by '{server}' [400]", election))
+                return log_entry
+            elif response.status_code == 409:
+                log_entry.append(("Warning", f"There is an election already running [409]", None))
+                return log_entry
+            else:
+                log_entry.append(("Attention",
+                                  f"'{server}' responded with the untreated code of [{response.status_code}]", election))
+        except requests.ConnectionError:
+            log_entry.append(("Attention", f"'{server}' couldn't be reached. Attempting another server...", None))
+        except Exception as exc:
+            log_entry.append(("Critical", f"Uncaught exception: '{str(exc)}'", election))
+            return log_entry
+    log_entry.append(("Error", f"No server could be reached", election))
+    return log_entry
