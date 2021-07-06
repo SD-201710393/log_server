@@ -29,7 +29,7 @@ class LogEntry:
     def __init__(self, s_from="Unknown", severity="Information", comm="Not Specified", body=None):
         global global_id
         self.msg_id = global_id
-        self.log_from = s_from
+        self.log_from = s_from + nickname(s_from)
         self.severity = severity
         self.comment = comm
         self.timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f - %d/%m/%Y")
@@ -200,13 +200,14 @@ def handle_log_services():     # If supplied by the url, execute services
         # All ready to process the request
         if is_service_locked is False:
             internal_log(severity="Success", comment="Working on your service request. Results coming shortly...")
-            arg_list = [request.args.get("pi"),     # Order is: [0] - Pull Info Mode | [1] - Run Election | [2] - Set All
+            arg_list = [request.args.get("pi"),    # Order is: [0] - Pull Info Mode | [1] - Run Election | [2] - Set All
                         request.args.get("sime"),
-                        request.args.get("stt")]
+                        request.args.get("stt"),
+                        request.args.get("fl")]
             threading.Thread(target=handle_demanding, args=(urls, arg_list)).start()
         else:
             internal_log(severity="Warning",
-                         comment=f"Services are in time out. Please wait {service_timeout} seconds before another request")
+                         comment=f"Services are in time out. Wait {service_timeout} seconds before another request")
         threading.Thread(target=enforce_timeout).start()
     except Exception as exc:
         log_uncaught_exception(str(exc), request.json)
@@ -218,7 +219,7 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
             internal_log(severity="Attention", comment="Empty Demanding request ignored")
             return
         pi_data, valid_servers, invalid_servers = pull_info(urls)
-        if args[0] is not None:
+        if args[0] is not None:     # Pull info from all servers
             if 'v' in args[0]:
                 for server in pi_data:
                     internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
@@ -228,7 +229,7 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
             internal_log(severity="Success",
                          comment=f"Server pull finished. {len(valid_servers)} servers are ready",
                          body=valid_servers)
-        if args[1] is not None:
+        if args[1] is not None:     # Simulate an election of...
             if 'ring' in args[1]:
                 election_servers = [svr for svr, elec in valid_servers if 'anel' in elec]
             elif 'bully' in args[1]:
@@ -243,7 +244,7 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
             entry_dump = simulate_election(election_servers, args[1])
             for entry in entry_dump:
                 internal_log(entry[0], entry[1], entry[2])
-        if args[2] is not None:
+        if args[2] is not None:     # Set all servers election to...
             if 'ring' in args[2]:
                 tgt_election = 'anel'
             elif 'bully' in args[2]:
@@ -255,6 +256,22 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
             entry_dump = set_all_elections(valid_servers, tgt_election)
             for entry in entry_dump:
                 internal_log(entry[0], entry[1], entry[2])
+        if args[3] is not None:     # Find who is the leader
+            if args[3] == '1':
+                pass
+            else:
+                internal_log(severity="Warning", comment="An invalid service was request and ignored",
+                             body={"find_leader": args[3]})
+                return
+            leaders, leader_count, entry_dump = find_leader(valid_servers)
+            for entry in entry_dump:
+                internal_log(entry[0], entry[1], entry[2])
+            if leader_count == 1:
+                internal_log(severity="Success", comment=f"'{leaders[0]}' {nickname(leaders[0])} is the leader / coordinator")
+            elif leader_count > 1:
+                for leader in leaders:
+                    internal_log(severity="Warning",
+                                 comment=f"'{leader}' {nickname(leader)} is ALSO the leader / coordinator")
     except Exception as exc:
         log_uncaught_exception(str(exc), request.json)
 
@@ -321,6 +338,22 @@ def user_shade_flavor_keys():
     # usr = user_shade.lower()
     # If more users want colors, add them here, but NEVER add the "Internal", that should be handled manually!
     return "usr_default"
+
+
+def nickname(url):
+    if "https://sd-rdm.herokuapp.com" in url:
+        return " (Ramon)"
+    elif "https://sd-201620236.herokuapp.com" in url:
+        return " (Saionara)"
+    elif "https://sd-jhsq.herokuapp.com" in url:
+        return " (João)"
+    elif "https://sd-app-server-jesulino.herokuapp.com" in url:
+        return " (Jesulino)"
+    elif "https://sd-mgs.herokuapp.com" in url:
+        return " (Maira)"
+    elif "https://sd-dmss.herokuapp.com" in url:
+        return " (Diêgo)"
+    return ""
 
 
 def internal_log(severity="Information", comment="Not Specified", body=None):

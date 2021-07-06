@@ -19,6 +19,21 @@ def server_request_info(target, data):
         data.append((1, target, None))
 
 
+def server_find_leader(target, leader_data, entries):
+    endpoint = '/info'
+    try:
+        status = requests.get(target + endpoint).json()
+        try:
+            if int(status['lider']) == 1:
+                leader_data.append(target)
+        except KeyError:
+            entries.append(("Error", f"'{target}' didn't returned valid info", status))
+        except Exception as exc:
+            entries.append(("Critical", f"'Uncaught exception: '{str(exc)}'", None))
+    except requests.ConnectionError:
+        entries.append(("Attention", f"'{target}' couldn't be reached", None))
+
+
 def server_set_election(target, election, entries):
     endpoint = '/info'
     js = {
@@ -126,6 +141,23 @@ def set_all_elections(urls, election_type):     # Returns a log entry for each s
     for t in thrs:
         t.join()
     return entries
+
+
+def find_leader(urls):
+    entries = []
+    leaders = []
+    thrs = []
+    for server in urls:
+        thrs.append(threading.Thread(target=server_find_leader, args=(server[0], leaders, entries)))
+        thrs[-1].start()
+    for t in thrs:
+        t.join()
+    leader_count = len(leaders)
+    if leader_count == 0:
+        entries.append(("Warning", "Currently there is NO leader / coordinator", None))
+    elif leader_count > 1:
+        entries.append(("Attention", f"There are {leader_count} leaders / coordinators", None))
+    return leaders, leader_count, entries
 
 
 def simulate_election(targets, election_type):     # Returns the starter server and a log entry in a tuple
