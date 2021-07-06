@@ -240,7 +240,9 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                 internal_log(severity="Attention", comment=f"There are no servers running '{args[1]}' elections")
             elif len(election_servers) == 1:
                 internal_log(severity="Warning", comment=f"Only '{election_servers[0]}' is running '{args[1]}' elections")
-            simulate_election(election_servers, args[1])
+            entry_dump = simulate_election(election_servers, args[1])
+            for entry in entry_dump:
+                internal_log(entry[0], entry[1], entry[2])
         if args[2] is not None:
             if 'ring' in args[2]:
                 tgt_election = 'anel'

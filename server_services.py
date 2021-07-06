@@ -5,7 +5,6 @@ import requests
 
 # Calls target and returns data in the format tuple(<error_code>, <json>)
 # Error codes: 0- No errors | 1- Connection Error | 2- Empty response
-from log_server import internal_log, log_uncaught_exception
 
 
 def server_request_info(target, data):
@@ -131,6 +130,7 @@ def set_all_elections(urls, election_type):     # Returns a log entry for each s
 
 def simulate_election(targets, election_type):     # Returns the starter server and a log entry in a tuple
     random.shuffle(targets)
+    entries = []
     election = {
         "id": "LogServer_" + ''.join(random.choices(string.ascii_letters + string.digits, k=5)),
         "participantes": []
@@ -139,22 +139,22 @@ def simulate_election(targets, election_type):     # Returns the starter server 
         try:
             response = requests.post(server + '/eleicao', json=election)
             if response.status_code == 200:
-                internal_log("Success",
-                             f"'{election_type}' Election '{election['id']}' request to server '{server}' was successful", election)
-                return
+                entries.append(("Success",
+                                f"'{election_type}' Election '{election['id']}' request to server '{server}' was successful", election))
+                return entries
             elif response.status_code == 400:
-                internal_log("Error",
-                             f"The Log Server sent a request that wasn't accepted by '{server}' [400]", election)
-                return
+                entries.append(("Error",
+                                f"The Log Server sent a request that wasn't accepted by '{server}' [400]", election))
+                return entries
             elif response.status_code == 409:
-                internal_log("Warning", f"There is an election already running [409]", None)
-                return
+                entries.append(("Warning", f"There is an election already running [409]", None))
+                return entries
             else:
-                internal_log("Attention", f"'{server}' responded with the untreated code of [{response.status_code}]", election)
+                entries.append(("Attention", f"'{server}' responded with the untreated code of [{response.status_code}]", election))
         except requests.ConnectionError:
-            internal_log("Attention", f"'{server}' couldn't be reached. Attempting another server...", None)
+            entries.append(("Attention", f"'{server}' couldn't be reached. Attempting another server...", None))
         except Exception as exc:
-            log_uncaught_exception(str(exc), election)
-            return
-    internal_log("Error", f"No server could be reached", election)
-    return
+            entries.append(("Critical", f"'Uncaught exception: '{str(exc)}'", election))
+            return entries
+    entries.append(("Error", f"No server could be reached", election))
+    return entries
