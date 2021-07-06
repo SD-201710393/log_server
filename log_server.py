@@ -1,7 +1,6 @@
 import datetime
 import json
 import os
-import threading
 import time
 
 from flask import Flask
@@ -9,7 +8,7 @@ from flask import request
 from flask import render_template
 from werkzeug.exceptions import BadRequest
 
-from server_services import pull_info, simulate_election
+from server_services import *
 
 app = Flask(__name__)
 
@@ -152,7 +151,7 @@ def set_info():
     except TypeError:
         internal_log(severity="Error", comment="Request have an invalid type", body=request.json)
     except Exception as exc:
-        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
+        log_uncaught_exception(str(exc), request.json)
 
 
 @app.route('/info', methods=['GET'])
@@ -201,15 +200,16 @@ def handle_log_services():     # If supplied by the url, execute services
         # All ready to process the request
         if is_service_locked is False:
             internal_log(severity="Success", comment="Working on your service request. Results coming shortly...")
-            arg_list = [request.args.get("pi"),     # Order is: [0] - Pull Info Mode | [1] - Election Simulation
-                        request.args.get("sime")]
+            arg_list = [request.args.get("pi"),     # Order is: [0] - Pull Info Mode | [1] - Run Election | [2] - Set All
+                        request.args.get("sime"),
+                        request.args.get("stt")]
             threading.Thread(target=handle_demanding, args=(urls, arg_list)).start()
         else:
             internal_log(severity="Warning",
                          comment=f"Services are in time out. Please wait {service_timeout} seconds before another request")
         threading.Thread(target=enforce_timeout).start()
     except Exception as exc:
-        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
+        log_uncaught_exception(str(exc), request.json)
 
 
 def handle_demanding(urls, args=None):    # All demanding tasks that require an update afterwards
@@ -240,11 +240,21 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                 internal_log(severity="Attention", comment=f"There are no servers running '{args[1]}' elections")
             elif len(election_servers) == 1:
                 internal_log(severity="Warning", comment=f"Only '{election_servers[0]}' is running '{args[1]}' elections")
-            entries = simulate_election(election_servers, args[1])
-            for entry in entries:
+            simulate_election(election_servers, args[1])
+        if args[2] is not None:
+            if 'ring' in args[2]:
+                tgt_election = 'anel'
+            elif 'bully' in args[2]:
+                tgt_election = 'valentao'
+            else:
+                internal_log(severity="Warning", comment=f"Unsupported election of type '{args[2]}' requested")
+                return
+            internal_log(severity="Information", comment=f"Attempting to set all servers to '{tgt_election}'...")
+            entry_dump = set_all_elections(valid_servers, tgt_election)
+            for entry in entry_dump:
                 internal_log(entry[0], entry[1], entry[2])
     except Exception as exc:
-        internal_log(severity="Critical", comment=f"Uncaught exception: '{str(exc)}'", body=request.json)
+        log_uncaught_exception(str(exc), request.json)
 
 
 def get_page_format():      # Returns the page, max page and epp based on the url arguments
@@ -312,8 +322,13 @@ def user_shade_flavor_keys():
 
 
 def internal_log(severity="Information", comment="Not Specified", body=None):
+    global entry_list
     entry_list.append(LogEntry("Internal", severity, comment, ({} if body is None else body)))
     entry_list[-1].flavor["user_shade"] = "internal"
+
+
+def log_uncaught_exception(exc, body_json):
+    internal_log(severity="Critical", comment=f"Uncaught exception: '{exc}'", body=body_json)
 
 
 def enforce_timeout():

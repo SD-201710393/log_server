@@ -7,7 +7,7 @@
 	</header>
 	<body onload="loaded()">
 		<div id="navbar">
-			<p class="active">Total Entries: {{ data["count"] }}</p>
+			<p class="active" id="entry_counter">Total Entries: {{ data["count"] }}</p>
 			{% if data["page"] > 1%}
 				<a class="common_nav" href="?p=1&epp={{data["epp"]}}"><<</a>
 				<a class="common_nav" href="?p={{data["page"]-1}}&epp={{data["epp"]}}"><</a>
@@ -41,8 +41,10 @@
 				<div class="drop-content">
 					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=s">Simplified '/info'</a>
 					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=v">Full '/info'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=ring">Run 'Ring'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=bully">Run 'Bully'</a>
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=ring">Start 'Ring' Election</a>
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=bully">Start 'Bully' Election</a>
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&stt=ring">Set All to 'Ring'</a>
+					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&stt=bully">Set All to 'Bully'</a>
 				</div>
 			</div>
 			<a class="common_nav" id="auto_update_btn" onclick="toggle_auto()">Manual Update</a>
@@ -127,13 +129,17 @@
 					function (response) {
 						return response.json();
 					}).then(function (json) {
-						if(json["entry_count"] != {{ data["count"] }}) {
+						var dif = json["entry_count"] - {{ data["count"] }};
+						if(dif != 0) {
 							if (auto_update) {
 								refresh();
 							}
 							else {
 								document.getElementById("update_btn").className = "update_me";
 								document.title = '* New Entry';
+								if (dif > 0) {
+									document.getElementById("entry_counter").innerHTML = "Total Entries: {{ data["count"] }} (+" + dif + ")";
+								}
 							}
 						}
 					setTimeout(fetcher, 3000);
