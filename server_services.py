@@ -96,6 +96,7 @@ def pull_info(urls):
                 pi_info["message"] = f"'{svr[1]}' ID:[{pi_info['id']}] is Online"
                 if pi_info["is_down"] == 'down':                    # Is the server up?
                     pi_info["message"] += " but is down "
+                    pi_info["invalid"] = 1
                 elif pi_info["is_down"] == 'up':
                     pi_info["message"] += ", up "
                 else:
