@@ -24,6 +24,7 @@ def ask_resource(servers):
     random.shuffle(servers)
     entries = []
     for server in servers:
+        entries.append(("Information", f"Making '{server}' ask for resource...", None))
         try:
             response = requests.post(server + endpoint)
             if response.status_code == 200:
