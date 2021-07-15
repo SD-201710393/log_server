@@ -159,7 +159,7 @@ def info():
     out = {
         "note": "Wrong server for that, pal ;)",
         "componente": "Log Server",
-        "versao": "1.0.2",
+        "versao": "1.2.0",
         "descricao": "Provides a public, default and easy to use visual log interface",
         "ponto_de_acesso": "https://sd-log-server.herokuapp.com",
         "status": "Always up",
@@ -200,10 +200,11 @@ def handle_log_services():     # If supplied by the url, execute services
         # All ready to process the request
         if is_service_locked is False:
             internal_log(severity="Success", comment="Working on your service request. Results coming shortly...")
-            arg_list = [request.args.get("pi"),    # Order is: [0] - Pull Info Mode | [1] - Run Election | [2] - Set All
-                        request.args.get("sime"),
-                        request.args.get("stt"),
-                        request.args.get("fl")]
+            arg_list = [request.args.get("pi"),     # [0] - Pull Info
+                        request.args.get("sime"),   # [1] - SIMulate Election
+                        request.args.get("stt"),    # [2] - SeT all To
+                        request.args.get("fl"),     # [3] - Find Leader
+                        request.args.get("afr")]    # [4] - Ask For Resource
             threading.Thread(target=handle_demanding, args=(urls, arg_list)).start()
         else:
             internal_log(severity="Warning",
@@ -231,9 +232,9 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                          body=valid_servers)
         if args[1] is not None:     # Simulate an election of...
             if 'ring' in args[1]:
-                election_servers = [svr for svr, elec, id in valid_servers if 'anel' in elec]
+                election_servers = [svr for svr, elec, svr_id in valid_servers if 'anel' in elec]
             elif 'bully' in args[1]:
-                election_servers = [svr for svr, elec, id in valid_servers if 'valentao' in elec]
+                election_servers = [svr for svr, elec, svr_id in valid_servers if 'valentao' in elec]
             else:
                 internal_log(severity="Warning", comment=f"Unsupported election of type '{args[1]}' requested")
                 return
@@ -257,9 +258,7 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
             for entry in entry_dump:
                 internal_log(entry[0], entry[1], entry[2])
         if args[3] is not None:     # Find who is the leader
-            if args[3] == '1':
-                pass
-            else:
+            if args[3] != '1':
                 internal_log(severity="Warning", comment="An invalid service was request and ignored",
                              body={"find_leader": args[3]})
                 return
@@ -272,6 +271,15 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                 for leader in leaders:
                     internal_log(severity="Warning",
                                  comment=f"'{leader}' {nickname(leader)} is ALSO the leader / coordinator")
+        if args[4] is not None:     # Ask a random server to post '/recurso'
+            if args[4] != '1':
+                internal_log(severity="Warning", comment="An invalid service was request and ignored",
+                             body={"ask_for_resource": args[4]})
+                return
+            servers_to_ask = [svr for svr, elec, svr_id in valid_servers if 'anel' in elec]
+            entry_dump = ask_resource(servers_to_ask)
+            for entry in entry_dump:
+                internal_log(entry[0], entry[1], entry[2])
     except Exception as exc:
         log_uncaught_exception(str(exc), request.json)
 
@@ -358,7 +366,7 @@ def nickname(url):
 
 def internal_log(severity="Information", comment="Not Specified", body=None):
     global entry_list
-    entry_list.append(LogEntry("Internal", severity, comment, ({} if body is None else body)))
+    entry_list.append(LogEntry("Internal", severity, comment, body))
     entry_list[-1].flavor["user_shade"] = "internal"
 
 

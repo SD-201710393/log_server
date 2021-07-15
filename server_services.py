@@ -19,6 +19,30 @@ def server_request_info(target, data):
         data.append((1, target, None))
 
 
+def ask_resource(servers):
+    endpoint = "/recurso"
+    random.shuffle(servers)
+    entries = []
+    for server in servers:
+        try:
+            response = requests.post(server + endpoint)
+            if response.status_code == 200:
+                entries.append(("Success", f"'{server}' was able to ask for resource", None))
+                return entries
+            elif response.status_code == 409:
+                entries.append(("Attention", f"'{server}' is busy. Unable to assert consent from all servers", None))
+                return entries
+            else:
+                entries.append(("Attention", f"'{server}' responded with the untreated code of [{response.status_code}]. Unable to assert consent from all servers", None))
+        except requests.ConnectionError:
+            entries.append(("Attention", f"'{server}' couldn't be reached. Attempting another server...", None))
+        except Exception as exc:
+            entries.append(("Critical", f"'Uncaught exception: '{str(exc)}'", None))
+            return entries
+    entries.append(("Error", f"No server could be reached", None))
+    return entries
+
+
 def server_find_leader(target, leader_data, entries):
     endpoint = '/info'
     try:
@@ -93,7 +117,7 @@ def pull_info(urls):
                 pi_info["id"] = svr[2]["identificacao"]
                 pi_info["election"] = svr[2]["eleicao"]
                 pi_info["severity"] = "Success"
-                pi_info["message"] = f"'{svr[1]}' ID:[{pi_info['id']}] is Online"
+                pi_info["message"] = f"'{svr[1]}' (id {pi_info['id']}) is Online"
                 if pi_info["is_down"] == 'down':                    # Is the server up?
                     pi_info["message"] += " but is down "
                     pi_info["invalid"] = 1
@@ -109,6 +133,7 @@ def pull_info(urls):
                     pi_info["invalid"] = 1
                 if pi_info["invalid"] == 1:
                     pi_info["severity"] = "Warning"
+                    pi_info["message"] += " [INVALID]"
                     invalid_list.append(pi_info)
                 else:
                     valid_list.append((pi_info["server"], pi_info["election"], pi_info["id"]))
