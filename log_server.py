@@ -231,9 +231,9 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                          body=valid_servers)
         if args[1] is not None:     # Simulate an election of...
             if 'ring' in args[1]:
-                election_servers = [svr for svr, elec in valid_servers if 'anel' in elec]
+                election_servers = [svr for svr, elec, id in valid_servers if 'anel' in elec]
             elif 'bully' in args[1]:
-                election_servers = [svr for svr, elec in valid_servers if 'valentao' in elec]
+                election_servers = [svr for svr, elec, id in valid_servers if 'valentao' in elec]
             else:
                 internal_log(severity="Warning", comment=f"Unsupported election of type '{args[1]}' requested")
                 return

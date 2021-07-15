@@ -110,7 +110,7 @@ def pull_info(urls):
                     pi_info["severity"] = "Warning"
                     invalid_list.append(pi_info)
                 else:
-                    valid_list.append((pi_info["server"], pi_info["election"]))
+                    valid_list.append((pi_info["server"], pi_info["election"], pi_info["id"]))
             else:
                 pi_info["message"] = f"'{svr[1]}' didn't responded correctly"
                 pi_info["severity"] = "Attention"
