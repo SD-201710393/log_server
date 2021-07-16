@@ -196,6 +196,7 @@ def simulate_election(targets, election_type):     # Returns the starter server 
     }
     for server in targets:
         try:
+            entries.append(("Information", f"Making '{server}' start an election...", None))
             response = requests.post(server + '/eleicao', json=election)
             if response.status_code == 200:
                 entries.append(("Success",
