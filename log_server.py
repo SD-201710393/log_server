@@ -276,7 +276,7 @@ def handle_demanding(urls, args=None):    # All demanding tasks that require an 
                 internal_log(severity="Warning", comment="An invalid service was request and ignored",
                              body={"ask_for_resource": args[4]})
                 return
-            servers_to_ask = [svr for svr, elec, svr_id in valid_servers if 'anel' in elec]
+            servers_to_ask = [svr for svr, elec, svr_id in valid_servers]
             entry_dump = ask_resource(servers_to_ask)
             for entry in entry_dump:
                 internal_log(entry[0], entry[1], entry[2])
