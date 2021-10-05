@@ -37,17 +37,6 @@
 				<a class="common_nav" href="log/old">Newest First</a>
 			{% endif %}
 						<div class="nav_dropdown">
-				<button class="dropbtn">Services</button>
-				<div class="drop-content">
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=s">Simplified '/info'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&pi=v">Full '/info'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=ring">Start 'Ring' Election</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&sime=bully">Start 'Bully' Election</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&stt=ring">Set All to 'Ring'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&stt=bully">Set All to 'Bully'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&afr=1">Ask for '/recurso'</a>
-					<a href="?p={{ data["page"] }}&epp={{ data["epp"] }}&ssrc=all&fl=1">Find Leader</a>
-				</div>
 			</div>
 			<a class="common_nav" id="auto_update_btn" onclick="toggle_auto()">Manual Update</a>
 			<p class="right_nav">Server Time: {{ data["last_update"] }}</p>

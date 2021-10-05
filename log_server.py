@@ -1,14 +1,12 @@
 import datetime
 import json
 import os
-import time
+import server_services
 
 from flask import Flask
 from flask import request
 from flask import render_template
 from werkzeug.exceptions import BadRequest
-
-from server_services import *
 
 app = Flask(__name__)
 
@@ -17,12 +15,6 @@ service_timeout = 10        # How many seconds between services? Used to prevent
 is_service_locked = False   # If true, another service cannot be invoked
 def_per_page = 20           # How many entries per page
 entry_list = []
-
-known_servers = ["https://sd-rdm.herokuapp.com", "https://sd-201620236.herokuapp.com",
-                 "https://sd-jhsq.herokuapp.com", "https://sd-app-server-jesulino.herokuapp.com",
-                 "https://sd-mgs.herokuapp.com", "https://sd-dmss.herokuapp.com"]
-shadow_servers = ["https://sd-rdm-shadow1.herokuapp.com", "https://sd-rdm-shadow2.herokuapp.com"]
-secondary_servers = []
 
 
 class LogEntry:
@@ -118,7 +110,7 @@ def add_entry():
 
 @app.route('/log', methods=['GET'])
 def show_recent_entries():
-    handle_log_services()
+    # handle_log_services() # Disabled on this version
     out, cur_page, max_page, per_page = prepare_page()
     rev = entry_list[::-1]
     for entry in rev[(cur_page - 1) * per_page:]:
@@ -130,7 +122,7 @@ def show_recent_entries():
 
 @app.route('/log/old', methods=['GET'])
 def show_entries():
-    handle_log_services()
+    # handle_log_services() # Disabled on this version
     out, cur_page, max_page, per_page = prepare_page()
     for entry in entry_list[(cur_page - 1) * per_page:]:
         out["entries"].append(entry.json())
@@ -140,18 +132,18 @@ def show_entries():
 
 
 # noinspection PyBroadException
-@app.route('/info', methods=['POST'])
-def set_info():
-    global secondary_servers
-    try:
-        if "secondary_servers" in request.json:
-            secondary_servers = request.json["secondary_servers"]
-    except ValueError:
-        internal_log(severity="Attention", comment="Invalid value received when setting data", body=request.json)
-    except TypeError:
-        internal_log(severity="Error", comment="Request have an invalid type", body=request.json)
-    except Exception as exc:
-        log_uncaught_exception(str(exc), request.json)
+# @app.route('/info', methods=['POST'])
+# def set_info():
+#    global secondary_servers
+#    try:
+#        if "secondary_servers" in request.json:
+#            secondary_servers = request.json["secondary_servers"]
+#    except ValueError:
+#        internal_log(severity="Attention", comment="Invalid value received when setting data", body=request.json)
+#    except TypeError:
+#        internal_log(severity="Error", comment="Request have an invalid type", body=request.json)
+#    except Exception as exc:
+#        log_uncaught_exception(str(exc), request.json)
 
 
 @app.route('/info', methods=['GET'])
@@ -170,118 +162,12 @@ def info():
                   "http://lattes.cnpq.br/2510824092604238"],
         "databases": {
             "servers": {
-                "known_servers": known_servers,
-                "secondary_servers": secondary_servers
+                "known_servers": server_services.known_servers,
+                # "secondary_servers": secondary_servers
             }
         }
     }
     return json.dumps(out), 418
-
-
-# noinspection PyBroadException
-def handle_log_services():     # If supplied by the url, execute services
-    try:
-        urls = []
-        if request.args.get("ssrc") is None:        # If no 'ssrc', 'Server SouRCe' supplied, just abort handling
-            return
-        elif "all" in request.args.get("ssrc"):     # Use all known servers
-            urls = known_servers
-        elif "shadow" in request.args.get("ssrc"):  # Use the shadow servers
-            urls = shadow_servers
-        elif "secondary" in request.args.get("ssrc"):
-            if len(secondary_servers) == 0:
-                internal_log(severity="Attention",
-                             comment="Request for internal service with empty secondary url database defined!")
-            else:
-                urls = secondary_servers
-        else:
-            internal_log(severity="Error", comment="Request for internal service without url database defined!")
-            return
-        # All ready to process the request
-        if is_service_locked is False:
-            internal_log(severity="Success", comment="Working on your service request. Results coming shortly...")
-            arg_list = [request.args.get("pi"),     # [0] - Pull Info
-                        request.args.get("sime"),   # [1] - SIMulate Election
-                        request.args.get("stt"),    # [2] - SeT all To
-                        request.args.get("fl"),     # [3] - Find Leader
-                        request.args.get("afr")]    # [4] - Ask For Resource
-            threading.Thread(target=handle_demanding, args=(urls, arg_list)).start()
-        else:
-            internal_log(severity="Warning",
-                         comment=f"Services are in time out. Wait {service_timeout} seconds before another request")
-        threading.Thread(target=enforce_timeout).start()
-    except Exception as exc:
-        log_uncaught_exception(str(exc), request.json)
-
-
-def handle_demanding(urls, args=None):    # All demanding tasks that require an update afterwards
-    try:
-        if args is None:
-            internal_log(severity="Attention", comment="Empty Demanding request ignored")
-            return
-        pi_data, valid_servers, invalid_servers = pull_info(urls)
-        if args[0] is not None:     # Pull info from all servers
-            if 'v' in args[0]:
-                for server in pi_data:
-                    internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
-            else:
-                for server in invalid_servers:
-                    internal_log(severity=server["severity"], comment=server["message"], body=server["body"])
-            internal_log(severity="Success",
-                         comment=f"Server pull finished. {len(valid_servers)} servers are ready",
-                         body=valid_servers)
-        if args[1] is not None:     # Simulate an election of...
-            if 'ring' in args[1]:
-                election_servers = [svr for svr, elec, svr_id in valid_servers if 'anel' in elec]
-            elif 'bully' in args[1]:
-                election_servers = [svr for svr, elec, svr_id in valid_servers if 'valentao' in elec]
-            else:
-                internal_log(severity="Warning", comment=f"Unsupported election of type '{args[1]}' requested")
-                return
-            if len(election_servers) == 0:
-                internal_log(severity="Attention", comment=f"There are no servers running '{args[1]}' elections")
-            elif len(election_servers) == 1:
-                internal_log(severity="Warning", comment=f"Only '{election_servers[0]}' is running '{args[1]}' elections")
-            entry_dump = simulate_election(election_servers, args[1])
-            for entry in entry_dump:
-                internal_log(entry[0], entry[1], entry[2])
-        if args[2] is not None:     # Set all servers election to...
-            if 'ring' in args[2]:
-                tgt_election = 'anel'
-            elif 'bully' in args[2]:
-                tgt_election = 'valentao'
-            else:
-                internal_log(severity="Warning", comment=f"Unsupported election of type '{args[2]}' requested")
-                return
-            internal_log(severity="Information", comment=f"Attempting to set all servers to '{tgt_election}'...")
-            entry_dump = set_all_elections(valid_servers, tgt_election)
-            for entry in entry_dump:
-                internal_log(entry[0], entry[1], entry[2])
-        if args[3] is not None:     # Find who is the leader
-            if args[3] != '1':
-                internal_log(severity="Warning", comment="An invalid service was request and ignored",
-                             body={"find_leader": args[3]})
-                return
-            leaders, leader_count, entry_dump = find_leader(valid_servers)
-            for entry in entry_dump:
-                internal_log(entry[0], entry[1], entry[2])
-            if leader_count == 1:
-                internal_log(severity="Success", comment=f"'{leaders[0]}' {nickname(leaders[0])} is the leader / coordinator")
-            elif leader_count > 1:
-                for leader in leaders:
-                    internal_log(severity="Warning",
-                                 comment=f"'{leader}' {nickname(leader)} is ALSO the leader / coordinator")
-        if args[4] is not None:     # Ask a random server to post '/recurso'
-            if args[4] != '1':
-                internal_log(severity="Warning", comment="An invalid service was request and ignored",
-                             body={"ask_for_resource": args[4]})
-                return
-            servers_to_ask = [svr for svr, elec, svr_id in valid_servers]
-            entry_dump = ask_resource(servers_to_ask)
-            for entry in entry_dump:
-                internal_log(entry[0], entry[1], entry[2])
-    except Exception as exc:
-        log_uncaught_exception(str(exc), request.json)
 
 
 def get_page_format():      # Returns the page, max page and epp based on the url arguments
@@ -349,18 +235,14 @@ def user_shade_flavor_keys():
 
 
 def nickname(url):
-    if "https://sd-rdm.herokuapp.com" in url:
-        return " (Ramon)"
-    elif "https://sd-201620236.herokuapp.com" in url:
-        return " (Saionara)"
-    elif "https://sd-jhsq.herokuapp.com" in url:
-        return " (João)"
-    elif "https://sd-app-server-jesulino.herokuapp.com" in url:
-        return " (Jesulino)"
-    elif "https://sd-mgs.herokuapp.com" in url:
-        return " (Maira)"
-    elif "https://sd-dmss.herokuapp.com" in url:
-        return " (Diêgo)"
+    try:
+        for server in server_services.known_servers:
+            if server["url"] == url:
+                return "(" + server["nome"] + ")"
+    except KeyError:
+        internal_log(severity="Error", comment="Known server list's 'url' key is missing!")
+    except Exception as exc:
+        log_uncaught_exception(str(exc), request.json)
     return ""
 
 
@@ -372,13 +254,6 @@ def internal_log(severity="Information", comment="Not Specified", body=None):
 
 def log_uncaught_exception(exc, body_json):
     internal_log(severity="Critical", comment=f"Uncaught exception: '{exc}'", body=body_json)
-
-
-def enforce_timeout():
-    global is_service_locked
-    is_service_locked = True
-    time.sleep(service_timeout)
-    is_service_locked = False
 
 
 def d_fill_server():
