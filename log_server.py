@@ -49,7 +49,7 @@ class LogEntry:
 def server_fetch():
     internal = {
         "entry_count": len(entry_list),
-        "services_timedout": is_service_locked
+        # "services_timedout": is_service_locked
     }
     return json.dumps(internal), 200
 
@@ -152,7 +152,7 @@ def info():
         "note": "Wrong server for that, pal ;)",
         "componente": "Log Server",
         "versao": "1.2.0",
-        "descricao": "Provides a public, default and easy to use visual log interface",
+        "descricao": "Provides a public, standardized and easy to use visual log interface",
         "ponto_de_acesso": "https://sd-log-server.herokuapp.com",
         "status": "Always up",
         "identificacao": -1,
